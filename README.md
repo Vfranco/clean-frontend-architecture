@@ -236,7 +236,6 @@ Los buenos sistemas de software comienzan con un buen codigo. Los principios SOL
         * services
         * usecases
         * providers
-        * repositories
     * network
         * requests
         * responses
@@ -319,7 +318,7 @@ export class LoginComponent extends LoginOutputLogic implements OnInit, OnDestro
 Model
 ```typescript
 
-abstract class OutputLogic {
+export abstract class OutputLogic {
   authForm: FormGroup;
   noNavigate: boolean;
   errorAuthentication: HttpErrorResponse;
@@ -327,7 +326,11 @@ abstract class OutputLogic {
   authenticationResponse: HttpResponse<AuthResponse>;
 }
 
-interface InputLogic {
+export interface InputLogic {
+
+}
+
+export interface InteractorLogic {
 
 }
 
