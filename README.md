@@ -253,8 +253,6 @@ Los buenos sistemas de software comienzan con un buen codigo. Los principios SOL
         * forms
         * pipes
         * validators
-        core.presenter.ts
-        core.interactor.ts
     * shared
         * UIComponents
     * ui
