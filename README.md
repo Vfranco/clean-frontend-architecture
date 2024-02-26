@@ -198,7 +198,7 @@ const app = new Application(
 Se busca con esta propuesta mejorar la escalablidad y mantenibilidad del proyecto usando el patron Clean Architecture y en la capa UI MVVM.
 
 ## Patron a seguir
-![Clean Architecture](./images/clean-architecture.png)
+![Clean Architecture](./clean-architecture.png)
 
 ## Esquema de Directorio
 
