@@ -273,121 +273,210 @@ Los buenos sistemas de software comienzan con un buen codigo. Los principios SOL
 
 Ejemplo de Vista
 ```typescript
+import { Component, Inject, OnDestroy, OnInit } from "@angular/core";
+import { Router } from "@angular/router";
+import { contextMenuOptions } from "@core/constants/options.enum";
+import { Products } from "@domain/entities/products.entitie";
+import { FunctionOneInputLogic, FunctionOneOutputLogic } from "./model/functionone.model";
+
 @Component({
-  selector: 'app-login',
-  templateUrl: './login.component.html'
+    selector: 'function-one-view',
+    templateUrl: './functionone.component.html'
 })
-export class LoginComponent extends LoginOutputLogic implements OnInit, OnDestroy  {
+export class FunctionOneComponent extends FunctionOneOutputLogic implements OnInit, OnDestroy {
 
-  constructor(
-    @Inject('loginPresenterProvider') private _presenter: LoginInputLogic,
-    private formBuilder: FormBuilder
-  ) {
-    super()
-    this._presenter.setView(this)
-  }
+    constructor(
+        @Inject('functionOnePresenterProvider') private _presenter: FunctionOneInputLogic,
+        private _router: Router
+    ) {
+        super();
+        this._presenter.setView(this);
+    }
 
-  get username() {
-    return this.authForm.get('username');
-  }
+    ngOnInit(): void {
+        this._presenter.getProducts();
+    }
 
-  get password() {
-    return this.authForm.get('password');
-  }
+    makeFilterWithinCriteriaValue(value: string): void {
+        this._presenter.makeFilterWithinCriteriaValue(value);
+    }
 
-  ngOnInit() {
-    this.buildForm();
-  }
+    redirectTo(): void {
+        this._router.navigate(['function-two']);
+    }
 
-  buildForm() {
-    this.authForm = this.formBuilder.group(AuthFormFields);
-  }
+    openContextMenu(id: string): void {
+        this._presenter.showContextMenu(id);
+    }
 
-  login() {
-    this._presenter.login(this.authForm);
-  }
+    contextMenuOption(event: string, product: Products): void {
+        (event === contextMenuOptions.editAction)
+            ? this._router.navigate(['function-two'], { queryParams: product })
+            : this._presenter.showModalConfirmation(product.name, product.id)
+    }
 
-  ngOnDestroy(): void {
+    processDeleteProduct(event: boolean): void {
+        if (event)
+            this._presenter.processDelete();
+    }
 
-  }
+    ngOnDestroy(): void {
+        this._presenter.unsubscribe();
+    }
 }
 ```
 
 Model
 ```typescript
 
-export abstract class OutputLogic {
-  authForm: FormGroup;
-  noNavigate: boolean;
-  errorAuthentication: HttpErrorResponse;
-  isLoading: boolean;
-  authenticationResponse: HttpResponse<AuthResponse>;
+import { HttpErrorResponse, HttpResponse } from "@angular/common/http";
+import { productsTitleColumns } from "@core/constants/products.columns";
+import { CoreInteractor } from "@core/view/core.interactor";
+import { CorePresenter } from "@core/view/core.presenter";
+import { Products } from "@domain/entities/products.entitie";
+
+export abstract class FunctionOneOutputLogic {
+    products: Products[] | null = [];
+    productsColumns = productsTitleColumns;
+    showMenu: boolean | undefined = false;
+    selectedContextMenu!: string;
+    isOpenModal: boolean = false;
+    selectedProductName!: string;
+    productId!: string;
 }
 
-export interface InputLogic {
-
+export interface FunctionOneInputLogic extends CorePresenter {
+    getProducts(): void
+    processResponse(response: HttpResponse<Array<Products>>): void
+    errorRequest(error: HttpErrorResponse): void
+    makeFilterWithinCriteriaValue(value: string): void
+    showContextMenu(id: string): void
+    showModalConfirmation(productName: string, id: string): void
+    processDeleteConfirmation(response: HttpResponse<any>): void
+    processDelete(): void
+    unsubscribe(): void
 }
 
-export interface InteractorLogic {
-
+export interface FunctionOneInteractorLogic extends CoreInteractor {
+    processProductRequest(): void
+    processProductDelete(id: string): void
+    unsubscribe(): void
 }
 
 ```
 
 Ejemplo de Presenter
 ```typescript
+import { HttpErrorResponse, HttpResponse, HttpStatusCode } from "@angular/common/http";
+import { Inject, Injectable } from "@angular/core";
+import { UtilsServices } from "@common/utils/utils.service";
+import { Products } from "@domain/entities/products.entitie";
+import { FunctionOneInputLogic, FunctionOneInteractorLogic, FunctionOneOutputLogic } from "../view/model/functionone.model";
+import { Messages } from "@core/constants/messages.enum";
+
 @Injectable()
-export class LoginPresenter implements LoginInputLogic {
-  private _view: LoginOutputLogic;
+export class FunctionOnePresenter implements FunctionOneInputLogic {
+    private _view!: FunctionOneOutputLogic;
 
-  constructor(private _interactor: LoginInteractor) {
-    this._interactor.setPresenter(this);
-  }
+    constructor(
+        @Inject('functionOneInteractorProvider') private _interactor: FunctionOneInteractorLogic
+    ) {
+        this._interactor.setPresenter(this);
+    }
 
-  public setView(component: LoginOutputLogic): void {
-    this._view = component;
-    this._interactor.setView(component);
-  }
+    setView(component: FunctionOneOutputLogic): void {
+        this._view = component;
+    }
 
-  login(formLogin: FormGroup): void {
-    this._interactor.login(formLogin);
-  }
+    makeFilterWithinCriteriaValue(value: string): void {
+        (UtilsServices.isEmptyOrNull(value))
+            ? this.getProducts()
+            : this._view.products = this.filterResult(value);
+    }
+
+    getProducts(): void {
+        this._interactor.processProductRequest();
+    }
+
+    private filterResult(value: string): Products[] {
+        return this._view.products?.filter(product => product.name.toLocaleLowerCase().includes(value)) as Products[];
+    }
+
+    processResponse(response: HttpResponse<Array<Products>>): void {
+        this._view.products = response.body;
+    }
+
+    errorRequest(error: HttpErrorResponse): void {
+        (error.status === HttpStatusCode.Ok) ? alert(Messages.deletedMessage) : alert(error.message);
+        this._view.isOpenModal = false;
+        this.getProducts();
+    }
+
+    showContextMenu(id: string): void {
+        this._view.selectedContextMenu = id;
+    }
+
+    showModalConfirmation(productName: string, productId: string): void {
+        this._view.isOpenModal = true;
+        this._view.selectedProductName = productName;
+        this._view.selectedContextMenu = "empty";
+        this._view.productId = productId;
+    }
+
+    processDelete(): void {
+        this._interactor.processProductDelete(this._view.productId);
+    }
+
+    processDeleteConfirmation(response: HttpResponse<any>): void {
+        if (response.status === HttpStatusCode.Ok) {
+            alert(Messages.deletedMessage);
+            this._view.isOpenModal = false;
+        }
+    }
+
+    unsubscribe(): void {
+        this._interactor.unsubscribe()
+    }
 }
 ```
 
 Ejemplo de Interactor
 ```typescript
+import { HttpErrorResponse, HttpResponse } from "@angular/common/http";
+import { Inject, Injectable } from "@angular/core";
+import { Products } from "@domain/entities/products.entitie";
+import { IProductService } from "@domain/interfaces/product.interface";
+import { Subscription } from "rxjs";
+import { FunctionOneInputLogic, FunctionOneInteractorLogic } from "../view/model/functionone.model";
+
 @Injectable()
-export class LoginInteractor implements LoginInputLogic {
+export class FunctionOneInteractor implements FunctionOneInteractorLogic {
+    private _presenter!: FunctionOneInputLogic;
+    private _subscription!: Subscription;
 
-  private _presenter: LoginInputLogic;
-  private _view: LoginOutputLogic;
+    constructor(@Inject('productProviderService') private _functionOneService: IProductService) { }
 
-  constructor(
-    private router: Router,
-    @Inject('authProvider') private authService: IAuthRepository,
-    @Inject('localStorageProvider') private localstorageService: ILocalStorageRepository
-  ) { }
+    setPresenter(presenter: FunctionOneInputLogic): void {
+        this._presenter = presenter;
+    }
 
-  setPresenter(presenter: LoginInputLogic): void {
-    this._presenter = presenter;
-  }
+    processProductRequest(): void {
+        this._subscription = this._functionOneService.getProducts().subscribe({
+            next: (response: HttpResponse<Products[]>) => this._presenter.processResponse(response),
+            error: (error: HttpErrorResponse) => this._presenter.errorRequest(error)
+        });
+    }
 
-  setView(view: LoginOutputLogic): void {
-    this._view = view;
-  }
+    processProductDelete(id: string): void {
+        this._subscription = this._functionOneService.deleteProduct(id).subscribe({
+            next: (response: HttpResponse<any>) => this._presenter.processDeleteConfirmation(response),
+            error: (error: HttpErrorResponse) => this._presenter.errorRequest(error)
+        });
+    }
 
-  login(formLogin: FormGroup): void {
-    
-  }
-
-  private validateResponseAuthentication(response: HttpResponse<AuthResponse>): void {
-    
-  }
-
-  private redirectAndSaveSession(response: HttpResponse<AuthResponse>): void {
-    
-  }
+    unsubscribe(): void {
+        this._subscription.unsubscribe();
+    }
 }
 ```
 
