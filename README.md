@@ -228,47 +228,6 @@ Definicion de las vistas la capa mas alejada del negocio, la composicion de cada
 
 Los buenos sistemas de software comienzan con un buen codigo. Los principios SOLID nos ayudaran a ordenar nuestras estructuras de datos y como estas deben interconectarse.
 
-# Ejemplo Directorio
-
-* app
-    * analytics
-    * application
-        * services
-        * usecases
-        * providers
-    * network
-        * requests
-        * responses
-    * domain
-        * entities
-        * interfaces
-    * common
-        * utils
-        * helpers
-        * errors
-    * core
-        * directives
-        * guards
-        * constants
-        * forms
-        * pipes
-        * validators
-    * shared
-        * UIComponents
-    * ui
-        * auth
-            * interactor
-            * presenter
-            * view
-                * model
-                    * auth.model.ts
-              auth.component.html
-              auth.component.ts
-        * auth.module.ts
-        * auth.routing.ts
-
-#
-
 ## Ejemplo de Codigo
 
 Ejemplo de Vista
